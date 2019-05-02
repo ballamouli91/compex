@@ -1,0 +1,32 @@
+#Permission level required
+sudo: required
+#services required
+services:
+  - docker
+#commands/steps to be executed before to run our tests which are build image with tag  (for convinience)
+#for us we have only tests for client. project and specify build context as client directory
+before_install:
+ - docker build -t ballamouli91/docker-react-complex-test:latest -f ./client/Dockerfile.dev ./client
+#script section suppose to conatain all commands to run our test suite, if test suite exit code is zero then travis feel tests are passed
+# as we know that npm run tests just sites and hangs for waiting from us (default watchmode), so we need pass extra comand -- -- coverage to run tests and exits out of terminal
+
+script:
+#tests run with coverage
+- docker run ballamouli91/docker-react-comlex-test npm run test -- --coverage
+
+#after our tests are passed, we need to build our prod images(client/nginx/worker/server) and push to dockerhub
+after_success:
+- docker build -t ballamouli91/docker-react-complex-multi-client ./client
+- docker build -t ballamouli91/docker-react-complex-multi-nginx ./nginx
+- docker build -t ballamouli91/docker-react-complex-multi-server ./server
+- docker build -t ballamouli91/docker-react-complex-multi-worker ./worker
+#after images are build, we need to login docker and push images
+##login docker cli and use login id and password from travis environment variables $DOCKER_PASSWORD & $DOCKER_ID
+#For docker login travis does not really have a support for prompt/multistep wizard to login docker,so we will be using complex command for login (instead docker login)
+- echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+# push images
+- docker push ballamouli91/docker-react-complex-multi-client
+- docker push ballamouli91/docker-react-complex-multi-nginx
+- docker push ballamouli91/docker-react-complex-multi-server
+- docker push ballamouli91/docker-react-complex-multi-worker
+
